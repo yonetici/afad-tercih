@@ -10,8 +10,8 @@
    3) README.md içindeki SQL'i Supabase SQL Editor'da çalıştırın.
    Doldurmadan bırakırsanız uygulama yalnızca Excel modunda çalışır.
    ============================================================ */
-window.SUPABASE_URL = "";        // örn: "https://abcd1234.supabase.co"
-window.SUPABASE_ANON_KEY = "";   // örn: "eyJhbGciOiJIUzI1NiІ...."
+window.SUPABASE_URL = "https://pprpelxpjzicllfotpfo.supabase.co";        // örn: "https://abcd1234.supabase.co"
+window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwcnBlbHhwanppY2xsZm90cGZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Nzg0NTAsImV4cCI6MjA5ODE1NDQ1MH0.q7x4y1OLL-EMimVCi2-rc1KefAeJ32by9OoYto-fcro";   // örn: "eyJhbGciOiJIUzI1NiІ...."
 
 /* Aday girişi: Sıra No + Ad + Soyad ile doğrulanır (üçü de roster'la eşleşmeli).
    Ayrı bir kod dağıtmaya gerek yoktur. */
