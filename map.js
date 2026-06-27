@@ -68,8 +68,9 @@ async function renderTurkeyMap(container, opts){
      </svg>`;
   container.querySelectorAll('path').forEach(p=>{
     if(opts.onClick) p.addEventListener('click',()=>opts.onClick(p.dataset.prov));
+    // not: path'i öne taşımıyoruz (appendChild yok) — yoksa etiketleri örter ve mouseleave bozulur
     p.addEventListener('mouseenter',()=>{
-      p.setAttribute('stroke','#e2e8f0'); p.setAttribute('stroke-width','2'); p.parentNode.appendChild(p);
+      p.setAttribute('stroke','#e2e8f0'); p.setAttribute('stroke-width','2.2');
       if(opts.onHover) opts.onHover(p.dataset.prov);
     });
     p.addEventListener('mouseleave',()=>{
