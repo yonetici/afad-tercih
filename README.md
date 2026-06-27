@@ -30,11 +30,16 @@ Adayların kendi tercihlerini girmesi için (isteğe bağlı) ücretsiz **Supaba
 
 ## İki çalışma modu
 
-### A) Sadece Excel (Supabase'siz, en hızlı başlangıç)
-`config.js` boş bırakılır. Yönetici, tercihleri Excel olarak toplayıp `index.html`'e yükler.
-Beklenen kolonlar:
+### A) Sadece Excel / Google Sheets (Supabase'siz, en hızlı başlangıç)
+`config.js` boş bırakılabilir. Yönetici, aday verisini `index.html`'e iki yoldan yükler:
+- **Excel:** `.xlsx` dosyasını "Excel Seç" ile yükle.
+- **Google Sheets (otomatik):** Herkese açık ("Bağlantıya sahip herkes görüntüleyebilir")
+  bir Google Sheets bağlantısını yapıştırıp **Çek** → veri doğrudan çekilir (indirme yok).
+  İsteğe bağlı: `config.js` içine `window.SHEET_URL = "...edit"` yazarsan alan otomatik dolar.
 
-| f (sıra no) | İL (mevcut) | Ad | Soyad | 1. TERCİH | 2. TERCİH | … (15'e kadar) |
+Beklenen kolonlar (her iki yolda da):
+
+| f (sıra no) | İL (mevcut) | Ad | Soyad | 1. TERCİH | 2. TERCİH | … |
 
 - Bir hücrede `/` ile birden fazla il yazılırsa otomatik ayrıştırılır.
 - Türkçe karakter / büyük-küçük / boşluk farkları normalize edilir.

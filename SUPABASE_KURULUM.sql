@@ -140,7 +140,7 @@ returns int language plpgsql security definer as $$
 declare n int;
 begin
   if not _is_admin(p_key) then return -1; end if;
-  update candidates set locked=p_locked;
+  update candidates set locked=p_locked where true;  -- 'where true' = tüm adaylar (uyarıyı susturur)
   get diagnostics n = row_count;
   return n;
 end; $$;

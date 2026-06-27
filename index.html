@@ -100,6 +100,14 @@
         <button class="btn ghost" id="demoBtn">Örnek formatı indir</button>
         <span class="muted" id="loadStatus">Henüz dosya yüklenmedi.</span>
       </div>
+      <div style="border-top:1px solid var(--line);margin:14px 0"></div>
+      <div class="flex">
+        <span style="font-weight:600">📄 Google Sheets'ten:</span>
+        <input class="search" id="sheetUrl" placeholder="Herkese açık Google Sheets bağlantısı" style="min-width:340px"/>
+        <button class="btn" id="sheetPull">Çek</button>
+        <span class="muted small" id="sheetStatus"></span>
+      </div>
+      <div class="note" style="margin:10px 0 0">Sayfa "Bağlantıya sahip <b>herkes görüntüleyebilir</b>" olmalı. Aynı kolon düzeni (f, İL, Ad, Soyad, tercihler) beklenir. Çektikten sonra istersen <b>Supabase'e Yükle</b> ile roster'ı güncelleyebilirsin.</div>
     </div>
     <div class="card" id="sbCard">
       <div class="toolbar">
@@ -655,6 +663,35 @@ document.getElementById('tabs').addEventListener('click',e=>{
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById('v-'+t.dataset.v).classList.add('active');
+});
+
+/* ============ Google Sheets'ten otomatik çekme ============ */
+function gsheetCsvUrl(input){
+  input=String(input||'').trim();
+  let id=input, gid='0';
+  const m=input.match(/\/d\/([a-zA-Z0-9_-]+)/); if(m) id=m[1];
+  const g=input.match(/[?&#]gid=(\d+)/); if(g) gid=g[1];
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+}
+(function(){
+  const inp=document.getElementById('sheetUrl');
+  inp.value = localStorage.getItem('afad_sheet') || window.SHEET_URL || '';
+})();
+document.getElementById('sheetPull').addEventListener('click',async()=>{
+  const inp=document.getElementById('sheetUrl').value.trim();
+  const st=document.getElementById('sheetStatus');
+  if(!inp){alert('Önce Google Sheets bağlantısını yapıştırın.');return;}
+  localStorage.setItem('afad_sheet',inp);
+  st.textContent='Çekiliyor…';
+  try{
+    const r=await fetch(gsheetCsvUrl(inp));
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const csv=await r.text();
+    if(/<html/i.test(csv)) throw new Error('Sayfa herkese açık değil (giriş istiyor).');
+    parseWorkbook(XLSX.read(csv,{type:'string'}));
+    st.textContent=`✓ ${STATE.candidates.length} aday çekildi.`;
+    document.getElementById('loadStatus').textContent='Google Sheets\'ten yüklendi.';
+  }catch(e){ st.textContent=''; alert('Çekilemedi: '+e.message+'\nSayfanın "Bağlantıya sahip herkes görüntüleyebilir" olduğundan emin olun.'); }
 });
 
 /* ============ Supabase (admin) ============ */
