@@ -124,6 +124,7 @@
         <input class="search" type="password" id="adminKey" placeholder="Yönetici anahtarı" style="min-width:180px"/>
         <button class="btn" id="sbPull">⬇️ Supabase'ten Çek</button>
         <button class="btn ghost" id="sbSeed" title="Yüklü Excel'deki aday listesini (sıra, ad, soyad, il) Supabase'e aktarır">⬆️ Aday Listesini Supabase'e Yükle</button>
+        <button class="btn ghost" id="sbSeedPrefs" title="Yüklü Excel/Sheets'teki MEVCUT tercihleri Supabase'e aktarır (harita gerçek durumu gösterir)">⬆️ Mevcut Tercihleri Yükle</button>
         <button class="btn ghost" id="sbLock" title="Tüm adayların tercihlerini kilitler (değiştiremezler)">🔒 Tercihleri Kilitle</button>
         <button class="btn ghost" id="sbUnlock" title="Tercih değişikliğini yeniden açar">🔓 Tercihleri Aç</button>
       </div>
@@ -797,6 +798,18 @@ async function setLock(state){
   if(data<0){alert('Yetkisiz: yönetici anahtarını kontrol edin.');return;}
   alert((state?'Kilitlendi':'Açıldı')+`: ${data} aday.`);
 }
+document.getElementById('sbSeedPrefs').addEventListener('click',async()=>{
+  if(!SB){alert('Supabase yapılandırılmamış (config.js).');return;}
+  const rows=STATE.candidates
+    .map(c=>({sira:c.sira, prefs:c.prefs.filter(p=>p.valid && isOpenKadro(p.canon)).map(p=>p.canon)}))
+    .filter(r=>r.prefs.length);
+  if(!rows.length){alert('Önce Excel/Sheets yükleyin; aktarılacak (açık kadrolu) tercih bulunamadı.');return;}
+  if(!confirm(`${rows.length} adayın mevcut tercihleri Supabase'e yazılacak (adayların formdan girdiği tercihlerin üzerine yazar). Devam?`)) return;
+  const {data,error}=await SB.rpc('admin_seed_prefs',{p_key:adminKey(),p_rows:rows});
+  if(error){alert('Hata: '+error.message);return;}
+  if(data<0){alert('Yetkisiz: yönetici anahtarını kontrol edin.');return;}
+  alert(`Tamam: ${data} adayın tercihi yüklendi. Artık harita gerçek durumu gösterir.`);
+});
 document.getElementById('sbLock').addEventListener('click',()=>setLock(true));
 document.getElementById('sbUnlock').addEventListener('click',()=>setLock(false));
 

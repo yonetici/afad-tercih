@@ -134,6 +134,21 @@ begin
     order by c.sira;
 end; $$;
 
+-- ADMIN: mevcut tercihleri toplu yükle (Excel/Sheets'ten gelen tercihleri preferences'a yazar)
+create or replace function admin_seed_prefs(p_key text, p_rows jsonb)
+returns int language plpgsql security definer as $$
+declare r jsonb; n int := 0;
+begin
+  if not _is_admin(p_key) then return -1; end if;
+  for r in select * from jsonb_array_elements(p_rows) loop
+    insert into preferences(sira, prefs, updated_at)
+    values ((r->>'sira')::int, coalesce(r->'prefs','[]'::jsonb), now())
+    on conflict (sira) do update set prefs=excluded.prefs, updated_at=now();
+    n := n + 1;
+  end loop;
+  return n;
+end; $$;
+
 -- ADMIN: tüm tercihleri kilitle/aç (kilitliyken aday değiştiremez)
 create or replace function admin_set_lock(p_key text, p_locked boolean)
 returns int language plpgsql security definer as $$
@@ -167,6 +182,7 @@ grant execute on function available_quota(int)                 to anon;
 grant execute on function save_preferences(int,text,jsonb)     to anon;
 grant execute on function admin_export(text)                   to anon;
 grant execute on function admin_seed(text,jsonb)               to anon;
+grant execute on function admin_seed_prefs(text,jsonb)         to anon;
 grant execute on function admin_set_lock(text,boolean)         to anon;
 
 -- BİTTİ. Kontrol: select * from admin_export('YONETICI-ANAHTARINIZ');
