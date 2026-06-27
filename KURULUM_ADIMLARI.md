@@ -61,8 +61,8 @@ Toplam süre ~15 dk. Sırayla yapın.
    (doldurduğunuz config.js dahil) → **Commit changes**.
 3. **Settings → Pages** → **Source: Deploy from a branch** → **Branch: main**, klasör **/(root)** → **Save**.
 4. 1-2 dk sonra sayfanın üstünde adres çıkar:
-   - Yönetici: `https://KULLANICI.github.io/tercih/index.html`
-   - Aday:     `https://KULLANICI.github.io/tercih/tercih.html`
+   - Aday (kök): `https://KULLANICI.github.io/tercih/`
+   - Yönetici:   `https://KULLANICI.github.io/tercih/admin.html`
 
 > Güvenlik tercihi: index.html herkese açık olsa bile yönetici işlemleri `admin_key` ister.
 > Daha da güvenli istiyorsanız index.html'i siteye koymayıp kendi bilgisayarınızda açabilirsiniz;

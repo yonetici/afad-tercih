@@ -11,8 +11,9 @@ Adayların kendi tercihlerini girmesi için (isteğe bağlı) ücretsiz **Supaba
 
 | Dosya | Görevi |
 |---|---|
-| `index.html` | **Yönetici** paneli: Dashboard (harita), yerleştirme, çakışma, Excel **veya** Supabase. |
-| `tercih.html` | **Aday** sayfası: harita + tablodan, liyakatına uygun kadrolardan tercih; Supabase'e kaydeder. |
+| `index.html` | **Aday** sayfası (kök adres): Google Sheets verisiyle **tercih simülasyonu** + PDF. Kayıt yapmaz. |
+| `admin.html` | **Yönetici** paneli: Dashboard (harita), yerleştirme, çakışma, risk; Sheet/Supabase. |
+| `tercih.html` | Eski adres → `index.html`'e yönlendirir (geriye dönük uyumluluk). |
 | `data.js` | Ortak il listesi + kadrolar (EK-1 PDF, 63 il / 109 kadro). |
 | `map.js` | Türkiye haritası (GeoJSON → SVG; bağımlılıksız). İki sayfa da kullanır. |
 | `config.js` | Supabase URL + anahtar + `MAX_PREFS` (tercih sayısı) + `REQUIRE_CODE`. Boşsa sadece Excel modu. |
@@ -87,7 +88,8 @@ Deterministik, itiraz edilemez; "herkes mümkün olduğunca üst tercihine" sonu
 
 1. Yeni repo oluşturun, bu klasördeki **tüm dosyaları** (index.html, tercih.html, data.js, config.js) köke koyun.
 2. Repo ayarları → Pages → kaynak `main` / `(root)`.
-3. Adaylara `https://<kullanıcı>.github.io/<repo>/tercih.html`, kendinize `.../index.html`.
+3. **Adaylara** kök adresi verin: `https://<kullanıcı>.github.io/<repo>/` (tercih simülasyonu).
+   **Yönetici** ekranı: `https://<kullanıcı>.github.io/<repo>/admin.html`.
 
 ## Notlar
 
