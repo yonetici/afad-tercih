@@ -86,6 +86,10 @@
         <span><i class="sw" style="background:#0ea5e9"></i> Sizin seçiminiz</span>
         <span><i class="sw" style="background:#334155"></i> Kadro yok</span>
       </div>
+      <div id="easyBox" style="margin-bottom:10px">
+        <div class="muted" style="font-size:12px;margin-bottom:6px">💡 Şu an en rahat (en az dolma riski olan) iller — tıklayarak ekleyin:</div>
+        <div id="easyChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
 
       <div class="grid2">
         <div>
@@ -247,7 +251,17 @@ function renderProj(){
   else{el.className='msg bad proj';el.innerHTML='⚠ Seçtiğiniz illerin tamamı üst sıradakiler tarafından dolmuş. Lütfen <b>uygun (yeşil)</b> illerden ekleyin.';}
 }
 function renderCnt(){const c=document.getElementById('cnt');c.textContent=`${chosen.length}/${MAX}`;c.className='counter'+(chosen.length>=MAX?' full':'');}
-function renderAll(){renderCnt();renderProj();renderTable();renderChosen();repaintMap();}
+function renderEasy(){
+  const box=document.getElementById('easyBox'), chips=document.getElementById('easyChips');
+  if(locked || chosen.length>=MAX){ box.style.display='none'; return; }
+  box.style.display='block';
+  const list=OPEN_PROVINCES.filter(p=>!chosen.includes(p) && (rem[p]||0)>0)
+    .sort((a,b)=>(rem[b]||0)-(rem[a]||0)).slice(0,8);
+  chips.innerHTML=list.map(p=>`<button class="btn ghost sm" data-easy="${p}" style="border-color:#16a34a">${p} <span style="opacity:.7">(${rem[p]} boş)</span></button>`).join('')
+    || '<span class="muted" style="font-size:12px">Tüm uygun iller seçildi.</span>';
+  chips.querySelectorAll('[data-easy]').forEach(b=>b.onclick=()=>toggle(b.dataset.easy));
+}
+function renderAll(){renderCnt();renderProj();renderEasy();renderTable();renderChosen();repaintMap();}
 
 document.getElementById('saveBtn').addEventListener('click',async()=>{
   if(!me)return;

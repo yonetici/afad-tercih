@@ -67,6 +67,12 @@
   .small{font-size:12px}
   .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .right{margin-left:auto}
+  .anahead{font-weight:700;font-size:13px;margin-bottom:8px}
+  .analist{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-height:240px;overflow:auto;font-size:13px}
+  .anarow{display:flex;justify-content:space-between;gap:8px;padding:5px 2px;border-bottom:1px solid rgba(148,163,184,.12)}
+  .anarow:last-child{border-bottom:0}
+  .anarow .v{font-weight:700;white-space:nowrap}
+  .anaempty{color:var(--muted);padding:8px 2px}
 </style>
 </head>
 <body>
@@ -141,6 +147,15 @@
         </div>
       </div>
       <div class="stats" id="dashStats"></div>
+    </div>
+    <div class="card">
+      <div class="toolbar"><b>📈 Süreç Özeti & Riskler</b></div>
+      <div id="dashNarrative" class="note" style="margin:0 0 14px"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
+        <div><div class="anahead" style="color:#86efac">🟢 Boş / rahat iller</div><div id="anaEmpty" class="analist"></div></div>
+        <div><div class="anahead" style="color:#fca5a5">🔴 En çok rekabet (talep&gt;kadro)</div><div id="anaComp" class="analist"></div></div>
+        <div><div class="anahead" style="color:#fcd34d">⚠️ Açıkta kalma riski</div><div id="anaRisk" class="analist"></div></div>
+      </div>
     </div>
     <div class="card">
       <div class="toolbar"><b>🗺️ Yerleşim Haritası</b>
@@ -417,6 +432,42 @@ function renderDash(){
       </tr>`;
     }).join('');
   document.getElementById('dashBody').innerHTML=rows||'<tr><td colspan="6" class="empty">Veri yok</td></tr>';
+
+  renderDashAnalysis(placedMap, first);
+}
+
+function renderDashAnalysis(placedMap, first){
+  const provs=Object.keys(STATE.quota);
+  const n=STATE.candidates.length;
+  const placed=STATE.result?STATE.result.placements.filter(p=>p.placedProvince).length:0;
+  // boş/rahat iller (kalan kadro)
+  const empty=provs.map(p=>({p,free:(Number(STATE.quota[p])||0)-(placedMap[p]||[]).length}))
+    .filter(x=>x.free>0).sort((a,b)=>b.free-a.free);
+  const emptyTotal=empty.reduce((s,x)=>s+x.free,0);
+  // en çok rekabet (1. tercih talebi > kadro)
+  const comp=provs.map(p=>({p,d:first[p]||0,q:Number(STATE.quota[p])||0}))
+    .filter(x=>x.d>x.q).sort((a,b)=>(b.d-b.q)-(a.d-a.q));
+  // açıkta kalma riski (yerleşemeyenler)
+  const risk=(STATE.result?STATE.result.unplaced:[]).map(c=>{
+    let reason='tüm tercihleri doldu';
+    if(c.prefs.length===0) reason='tercih girmemiş';
+    else if(!c.prefs.some(p=>p.valid && isOpenKadro(p.canon))) reason='geçersiz/kadrosuz tercih';
+    return {c,reason};
+  });
+
+  const li=(l,c,r)=>`<div class="anarow"><span>${l}</span><span class="v" style="color:${c||'inherit'}">${r}</span></div>`;
+  document.getElementById('anaEmpty').innerHTML = empty.length
+    ? empty.map(x=>li(`<b>${x.p}</b>`,'#86efac',`${x.free} boş`)).join('') : '<div class="anaempty">Boş kadro yok 🎉</div>';
+  document.getElementById('anaComp').innerHTML = comp.length
+    ? comp.map(x=>li(`<b>${x.p}</b>`,'#fca5a5',`talep ${x.d} / kadro ${x.q}`)).join('') : '<div class="anaempty">Kontenjan aşımı yok</div>';
+  document.getElementById('anaRisk').innerHTML = risk.length
+    ? risk.sort((a,b)=>a.c.sira-b.c.sira).map(x=>li(`#${x.c.sira} ${(x.c.ad+' '+x.c.soyad).trim()||'(isim yok)'}`,'#fcd34d',x.reason)).join('')
+    : '<div class="anaempty">Açıkta kalan yok 🎉</div>';
+
+  document.getElementById('dashNarrative').innerHTML=
+    `<b>${placed}/${n}</b> aday yerleşti, <b style="color:#fca5a5">${n-placed}</b> açıkta · `+
+    `<b style="color:#fca5a5">${comp.length}</b> ilde kontenjan aşımı · `+
+    `<b style="color:#86efac">${empty.length}</b> ilde toplam <b style="color:#86efac">${emptyTotal}</b> boş kadro.`;
 }
 
 function renderBadges(){
