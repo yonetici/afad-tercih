@@ -1,0 +1,19 @@
+name: Sheet -> Supabase (saatlik senkron)
+
+on:
+  schedule:
+    - cron: '0 * * * *'      # her saat başı (UTC; birkaç dk gecikebilir)
+  workflow_dispatch: {}        # elle de tetiklenebilir (Actions sekmesi > Run workflow)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Google Sheets -> Supabase
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: node scripts/sync.mjs

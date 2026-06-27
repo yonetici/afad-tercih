@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AFAD Şube Müdürü — Tercih Formu</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AFAD Şube Müdürü — Tercih Simülasyonu</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
 <script src="data.js"></script>
 <script src="map.js"></script>
@@ -52,11 +52,12 @@
 </head>
 <body>
 <header>
-  <h1>AFAD Şube Müdürü — Tercih Formu</h1>
-  <p>Görevde Yükselme / Ünvan Değişikliği · liyakat sıranıza göre uygun kadrolardan tercih</p>
+  <h1>AFAD Şube Müdürü — Tercih Simülasyonu</h1>
+  <p>Görevde Yükselme / Ünvan Değişikliği · liyakat sıranıza göre nereye yerleşeceğinizi deneyin (kayıt yapılmaz)</p>
 </header>
 <div class="wrap">
-  <div id="cfgWarn" class="card hidden"><div class="msg bad">⚠ Sistem henüz yapılandırılmamış (Supabase ayarı eksik). Lütfen yetkiliye bildirin.</div></div>
+  <div id="cfgWarn" class="card hidden"><div class="msg bad">⚠ Aday verisi yüklenemedi (Google Sheets bağlantısı bulunamadı/erişilemedi). Lütfen yetkiliye bildirin.</div></div>
+  <div id="loadingMsg" class="card"><div class="msg info">⏳ Aday verileri yükleniyor…</div></div>
 
   <div id="app" class="hidden">
     <!-- Kimlik -->
@@ -109,68 +110,67 @@
         </div>
       </div>
 
-      <div id="saveMsg" style="margin-top:14px"></div>
       <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn" id="saveBtn">✔ Tercihlerimi Kaydet</button>
-        <button class="btn ghost" id="printBtn">🖨️ Özet / PDF</button>
-        <span class="muted" style="font-size:13px">Kaydettikten sonra tekrar girip güncelleyebilirsiniz.</span>
+        <button class="btn ghost" id="printBtn">🖨️ Simülasyon Özeti / PDF</button>
+        <span class="muted" style="font-size:13px">Bu bir <b>simülasyondur</b> — seçimleriniz kaydedilmez. Resmî tercihler yetkili tablosundan toplanır.</span>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const URL_=window.SUPABASE_URL, KEY_=window.SUPABASE_ANON_KEY;
 const MAX=Number(window.MAX_PREFS)||4;
-let sb=null, me=null, chosen=[], rem={}, locked=false;   // rem: il -> size kalan (üst sıralardan sonra)
+const SHEET=window.SHEET_URL || DEFAULT_SHEET_URL || '';
+let CANDS=[], me=null, chosen=[], rem={};   // rem: il -> size kalan (üst sıralardan sonra)
 
-if(!URL_||!KEY_){ document.getElementById('cfgWarn').classList.remove('hidden'); }
-else{
-  sb=window.supabase.createClient(URL_,KEY_);
-  document.getElementById('app').classList.remove('hidden');
-  // İl dropdown: 81 il (alfabetik) + Başkanlık
-  const sel=document.getElementById('fIl');
-  ['Başkanlık', ...[...PROVINCES].sort((a,b)=>a.localeCompare(b,'tr'))].forEach(p=>{
-    const o=document.createElement('option'); o.value=p; o.textContent=p; sel.appendChild(o);
-  });
-}
+// İl dropdown: 81 il (alfabetik) + Başkanlık
+['Başkanlık', ...[...PROVINCES].sort((a,b)=>a.localeCompare(b,'tr'))].forEach(p=>{
+  const o=document.createElement('option'); o.value=p; o.textContent=p; document.getElementById('fIl').appendChild(o);
+});
 // sıra no: yalnızca rakam
 document.getElementById('fSira').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'');});
 
-document.getElementById('loadBtn').addEventListener('click',async()=>{
+// Açılışta Google Sheets'ten aday verisini çek (ana kaynak)
+(async function loadData(){
+  try{
+    if(!SHEET) throw new Error('sheet yok');
+    const r=await fetch(sheetCsvUrl(SHEET));
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const csv=await r.text();
+    if(/<html/i.test(csv)) throw new Error('herkese açık değil');
+    const wb=XLSX.read(csv,{type:'string'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null,raw:false});
+    CANDS=parseCandidateRows(rows);
+    document.getElementById('loadingMsg').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+  }catch(e){
+    document.getElementById('loadingMsg').classList.add('hidden');
+    document.getElementById('cfgWarn').classList.remove('hidden');
+  }
+})();
+
+document.getElementById('loadBtn').addEventListener('click',()=>{
   const sira=Number(document.getElementById('fSira').value.trim());
   const il=document.getElementById('fIl').value;
   const im=document.getElementById('idMsg');
   if(!sira||!il){im.innerHTML='<div class="msg bad">Lütfen sıra no girin ve ilinizi seçin.</div>';return;}
-  // kimlik doğrula + mevcut tercihleri al
-  const gp=await sb.rpc('login',{p_sira:sira,p_il:il});
-  if(gp.error){im.innerHTML=`<div class="msg bad">${gp.error.message}</div>`;return;}
-  if(gp.data===null){im.innerHTML='<div class="msg bad">Kimlik doğrulanamadı: sıra no ve il kayıtla eşleşmiyor. Lütfen kontrol edin.</div>';return;}
-  me={sira, il, ad:gp.data.ad||'', soyad:gp.data.soyad||''};
-  locked=!!gp.data.locked;
-  // liyakat-duyarlı kalan kadro
-  const aq=await sb.rpc('available_quota',{p_sira:sira});
-  if(aq.error){im.innerHTML=`<div class="msg bad">${aq.error.message}</div>`;return;}
-  rem={}; (aq.data||[]).forEach(r=>{rem[r.il]=r.kalan;});
-
+  const cand=CANDS.find(c=>c.sira===sira);
+  if(!cand){im.innerHTML='<div class="msg bad">Bu sıra numarası listede bulunamadı.</div>';return;}
+  if(normKey(cand.il)!==normKey(il)){im.innerHTML=`<div class="msg bad">Sıra no ile il eşleşmiyor. (#${sira} kaydı farklı bir ile ait.)</div>`;return;}
+  me={sira, il:cand.il, ad:cand.ad, soyad:cand.soyad};
+  // liyakat-duyarlı kalan kadro (üst sıradakilerin Sheet'teki tercihlerine göre)
+  rem=simulateRemaining(CANDS, sira);
   im.innerHTML='';
-  const savedPrefs = Array.isArray(gp.data.prefs)? gp.data.prefs : [];
-  let saved=savedPrefs.filter(x=>OPEN_PROVINCES.includes(x));
-  // üst sıradakiler tarafından dolmuş olanları çıkar, uyar
-  const dn=document.getElementById('dropNotice');
-  if(locked){
-    chosen=saved.slice();   // kilitli: kaydı olduğu gibi göster (salt-okunur)
-    dn.innerHTML='<div class="msg bad">🔒 Tercih dönemi <b>kapalı</b>. Tercihlerinizi görüntüleyebilir ama değiştiremezsiniz.</div>';
-  }else{
-    const dropped=saved.filter(p=>(rem[p]||0)<=0);
-    chosen=saved.filter(p=>(rem[p]||0)>0).slice(0,MAX);
-    dn.innerHTML = dropped.length? `<div class="msg bad">Şu önceki tercihleriniz üst sıradaki adaylar tarafından dolduğu için çıkarıldı: <b>${dropped.join(', ')}</b>. Lütfen yeniden seçim yapın.</div>`:'';
-  }
-  document.getElementById('saveBtn').disabled=locked;
+  // adayın Sheet'teki mevcut tercihleri başlangıç noktası (açık & hâlâ uygun olanlar)
+  const saved=cand.prefs.filter(p=>p.valid && isOpen(p.canon)).map(p=>p.canon);
+  const dropped=saved.filter(p=>(rem[p]||0)<=0);
+  chosen=saved.filter(p=>(rem[p]||0)>0).slice(0,MAX);
+  document.getElementById('dropNotice').innerHTML = dropped.length
+    ? `<div class="msg bad">Sheet'teki şu tercihleriniz üst sıradakiler tarafından dolduğu için simülasyondan çıkarıldı: <b>${dropped.join(', ')}</b>.</div>`:'';
 
   document.getElementById('prefCard').classList.remove('hidden');
   document.getElementById('prefCard').scrollIntoView({behavior:'smooth'});
-  await drawMap();
+  drawMap();
   renderAll();
 });
 
@@ -180,14 +180,14 @@ function canAdd(p){return isOpen(p) && (rem[p]||0)>0 && !chosen.includes(p) && c
 function projection(){ for(const p of chosen){ if((rem[p]||0)>0) return p; } return null; }
 
 function toggle(p){
-  if(locked || !isOpen(p)) return;
+  if(!isOpen(p)) return;
   const i=chosen.indexOf(p);
   if(i>=0){ chosen.splice(i,1); }
   else if(canAdd(p)){ chosen.push(p); }
   else return;
   renderAll();
 }
-function move(i,d){if(locked)return;const j=i+d; if(j<0||j>=chosen.length)return;[chosen[i],chosen[j]]=[chosen[j],chosen[i]];renderAll();}
+function move(i,d){const j=i+d; if(j<0||j>=chosen.length)return;[chosen[i],chosen[j]]=[chosen[j],chosen[i]];renderAll();}
 
 /* ---- harita ---- */
 function mapFill(p){
@@ -253,7 +253,7 @@ function renderProj(){
 function renderCnt(){const c=document.getElementById('cnt');c.textContent=`${chosen.length}/${MAX}`;c.className='counter'+(chosen.length>=MAX?' full':'');}
 function renderEasy(){
   const box=document.getElementById('easyBox'), chips=document.getElementById('easyChips');
-  if(locked || chosen.length>=MAX){ box.style.display='none'; return; }
+  if(chosen.length>=MAX){ box.style.display='none'; return; }
   box.style.display='block';
   const list=OPEN_PROVINCES.filter(p=>!chosen.includes(p) && (rem[p]||0)>0)
     .sort((a,b)=>(rem[b]||0)-(rem[a]||0)).slice(0,8);
@@ -262,20 +262,6 @@ function renderEasy(){
   chips.querySelectorAll('[data-easy]').forEach(b=>b.onclick=()=>toggle(b.dataset.easy));
 }
 function renderAll(){renderCnt();renderProj();renderEasy();renderTable();renderChosen();repaintMap();}
-
-document.getElementById('saveBtn').addEventListener('click',async()=>{
-  if(!me)return;
-  if(chosen.length===0 && !confirm('Hiç tercih eklemediniz. Boş kaydetmek istediğinize emin misiniz?')) return;
-  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Kaydediliyor…';
-  const {data,error}=await sb.rpc('save_preferences',{p_sira:me.sira,p_il:me.il,p_prefs:chosen});
-  btn.disabled=false; btn.textContent='✔ Tercihlerimi Kaydet';
-  const m=document.getElementById('saveMsg');
-  if(error){m.innerHTML=`<div class="msg bad">Hata: ${error.message}</div>`;return;}
-  if(data==='OK') m.innerHTML=`<div class="msg ok">✅ Tercihleriniz kaydedildi (${chosen.length} tercih). İstediğiniz zaman tekrar girip güncelleyebilirsiniz.</div>`;
-  else if(data==='BADIDENTITY') m.innerHTML=`<div class="msg bad">Kimlik doğrulanamadı.</div>`;
-  else if(data==='LOCKED') m.innerHTML=`<div class="msg bad">Tercihleriniz yetkili tarafından kilitlenmiş, değiştirilemez.</div>`;
-  else m.innerHTML=`<div class="msg bad">Beklenmeyen yanıt: ${data}</div>`;
-});
 
 /* ---- Yazdırılabilir özet / PDF ---- */
 document.getElementById('printBtn').addEventListener('click',()=>{

@@ -278,58 +278,13 @@ document.getElementById('fileInput').addEventListener('change', e=>{
 });
 
 function parseWorkbook(wb){
-  // ilk sayfayı kullan (Sayfa1)
+  // ilk sayfayı kullan (Sayfa1); ayrıştırma data.js'teki ortak fonksiyonda
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
-  // başlık satırını bul (İL ve Ad içeren)
-  let headerIdx = 0;
-  for(let i=0;i<Math.min(rows.length,5);i++){
-    const r = (rows[i]||[]).map(x=>String(x||'').toLocaleUpperCase('tr-TR'));
-    if(r.some(c=>c.includes('İL')||c.includes('IL')) && r.some(c=>c.includes('AD'))){ headerIdx=i; break; }
-  }
-  const cands = [];
-  for(let i=headerIdx+1;i<rows.length;i++){
-    const r = rows[i]||[];
-    const sira = r[0];
-    const il = r[1];
-    const ad = r[2];
-    const soyad = r[3];
-    const hasSira = sira!=null && String(sira).trim()!=='' && !isNaN(Number(sira));
-    const hasName = (ad&&String(ad).trim()) || (soyad&&String(soyad).trim()) || (il&&String(il).trim());
-    if(!hasSira && !hasName) continue;   // tamamen boş satır -> atla (sıra-no'lu boş satır KORUNUR = 109)
-    // tercih hücreleri: kolon 4'ten itibaren (0-index)
-    const prefsRaw = [];
-    for(let c=4;c<r.length;c++){
-      const v = r[c];
-      if(v===null||String(v).trim()==='') continue;
-      // hücre içi çoklu il: / \ ; , veya satır sonu
-      String(v).split(/[\/\\;\n]+/).forEach(part=>{
-        const t = part.trim();
-        if(t) prefsRaw.push(t);
-      });
-    }
-    const prefs = dedupePrefs(prefsRaw).slice(0,15).map(raw=>{
-      const canon = resolveProvince(raw);
-      return {raw, canon, valid:!!canon};
-    });
-    cands.push({
-      sira: sira!=null && String(sira).trim()!=='' ? Number(sira) : (cands.length+1),
-      il: il?String(il).trim():'',
-      ad: ad?String(ad).trim():'',
-      soyad: soyad?String(soyad).trim():'',
-      prefs
-    });
-  }
-  STATE.candidates = cands;
+  STATE.candidates = parseCandidateRows(rows);
   runPlacement();
   renderAll();
   document.getElementById('loadSummary').style.display='block';
-}
-
-function dedupePrefs(arr){
-  const seen=new Set(), out=[];
-  for(const x of arr){ const k=normKey(x); if(k && !seen.has(k)){seen.add(k);out.push(x);} }
-  return out;
 }
 
 /* ============ YERLEŞTİRME ALGORİTMASI ============
@@ -718,33 +673,29 @@ document.getElementById('tabs').addEventListener('click',e=>{
 });
 
 /* ============ Google Sheets'ten otomatik çekme ============ */
-function gsheetCsvUrl(input){
-  input=String(input||'').trim();
-  let id=input, gid='0';
-  const m=input.match(/\/d\/([a-zA-Z0-9_-]+)/); if(m) id=m[1];
-  const g=input.match(/[?&#]gid=(\d+)/); if(g) gid=g[1];
-  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
-}
 (function(){
   const inp=document.getElementById('sheetUrl');
-  inp.value = localStorage.getItem('afad_sheet') || window.SHEET_URL || '';
+  inp.value = localStorage.getItem('afad_sheet') || window.SHEET_URL || DEFAULT_SHEET_URL || '';
 })();
-document.getElementById('sheetPull').addEventListener('click',async()=>{
-  const inp=document.getElementById('sheetUrl').value.trim();
+async function pullSheet(url, silent){
   const st=document.getElementById('sheetStatus');
-  if(!inp){alert('Önce Google Sheets bağlantısını yapıştırın.');return;}
-  localStorage.setItem('afad_sheet',inp);
+  if(!url){ if(!silent) alert('Önce Google Sheets bağlantısını yapıştırın.'); return false; }
+  localStorage.setItem('afad_sheet',url);
   st.textContent='Çekiliyor…';
   try{
-    const r=await fetch(gsheetCsvUrl(inp));
+    const r=await fetch(sheetCsvUrl(url));
     if(!r.ok) throw new Error('HTTP '+r.status);
     const csv=await r.text();
     if(/<html/i.test(csv)) throw new Error('Sayfa herkese açık değil (giriş istiyor).');
     parseWorkbook(XLSX.read(csv,{type:'string'}));
-    st.textContent=`✓ ${STATE.candidates.length} aday çekildi.`;
+    st.textContent=`✓ ${STATE.candidates.length} aday çekildi (${new Date().toLocaleTimeString('tr-TR')}).`;
     document.getElementById('loadStatus').textContent='Google Sheets\'ten yüklendi.';
-  }catch(e){ st.textContent=''; alert('Çekilemedi: '+e.message+'\nSayfanın "Bağlantıya sahip herkes görüntüleyebilir" olduğundan emin olun.'); }
-});
+    return true;
+  }catch(e){ st.textContent=''; if(!silent) alert('Çekilemedi: '+e.message+'\nSayfanın "Bağlantıya sahip herkes görüntüleyebilir" olduğundan emin olun.'); return false; }
+}
+document.getElementById('sheetPull').addEventListener('click',()=>pullSheet(document.getElementById('sheetUrl').value.trim(),false));
+// açılışta otomatik çek (Sheet ana kaynak)
+window.addEventListener('load',()=>{ const u=document.getElementById('sheetUrl').value.trim(); if(u) pullSheet(u,true); });
 
 /* ============ Supabase (admin) ============ */
 let SB=null;

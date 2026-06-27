@@ -35,3 +35,53 @@ const DEFAULT_QUOTA = {
 
 /* açık kadrolu illerin alfabetik listesi (aday tercih ekranı bunları gösterir) */
 const OPEN_PROVINCES = Object.keys(DEFAULT_QUOTA).sort((a,b)=>a.localeCompare(b,'tr'));
+
+/* Aday verisinin tutulduğu herkese açık Google Sheet (her iki sayfa buradan canlı okur) */
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1gwNC_OWnnIe4iO-XWNh919ivujYzhsJsJfEU8e06k8s/edit";
+function sheetCsvUrl(input){
+  input=String(input||'').trim();
+  let id=input, gid='0';
+  const m=input.match(/\/d\/([a-zA-Z0-9_-]+)/); if(m) id=m[1];
+  const g=input.match(/[?&#]gid=(\d+)/); if(g) gid=g[1];
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+}
+
+/* 2B satır dizisini (header dahil) aday nesnelerine çevirir — index.html ve tercih.html paylaşır */
+function parseCandidateRows(rows){
+  let headerIdx=0;
+  for(let i=0;i<Math.min(rows.length,5);i++){
+    const r=(rows[i]||[]).map(x=>String(x||'').toLocaleUpperCase('tr-TR'));
+    if(r.some(c=>c.includes('İL')||c.includes('IL')) && r.some(c=>c.includes('AD'))){headerIdx=i;break;}
+  }
+  const cands=[];
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const sira=r[0], il=r[1], ad=r[2], soyad=r[3];
+    const hasSira=sira!=null&&String(sira).trim()!==''&&!isNaN(Number(sira));
+    const hasName=(ad&&String(ad).trim())||(soyad&&String(soyad).trim())||(il&&String(il).trim());
+    if(!hasSira&&!hasName) continue;
+    const prefsRaw=[];
+    for(let c=4;c<r.length;c++){
+      const v=r[c];
+      if(v===null||String(v).trim()==='') continue;
+      String(v).split(/[\/\\;\n]+/).forEach(part=>{const t=part.trim(); if(t) prefsRaw.push(t);});
+    }
+    const seen=new Set(), prefs=[];
+    for(const x of prefsRaw){const k=normKey(x); if(k&&!seen.has(k)){seen.add(k); const canon=resolveProvince(x); prefs.push({raw:x,canon,valid:!!canon});}}
+    cands.push({
+      sira: hasSira?Number(sira):(cands.length+1),
+      il: il?String(il).trim():'', ad: ad?String(ad).trim():'', soyad: soyad?String(soyad).trim():'',
+      prefs: prefs.slice(0,15)
+    });
+  }
+  return cands;
+}
+
+/* Liyakat-duyarlı kalan kadro: sira < beforeSira olan adaylar yerleştirildikten sonra il başına kalan */
+function simulateRemaining(candidates, beforeSira){
+  const rem={}; for(const [p,n] of Object.entries(DEFAULT_QUOTA)) rem[p]=n;
+  candidates.filter(c=>c.sira<beforeSira).sort((a,b)=>a.sira-b.sira).forEach(c=>{
+    for(const pr of c.prefs){ if(pr.valid && rem[pr.canon]>0){ rem[pr.canon]--; break; } }
+  });
+  return rem;
+}
