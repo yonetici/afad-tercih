@@ -1,0 +1,4 @@
+# yerel/geçici dosyalar repoya girmesin
+*.xlsx
+*.bak
+.DS_Store
