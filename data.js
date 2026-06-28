@@ -37,7 +37,7 @@ const DEFAULT_QUOTA = {
 const OPEN_PROVINCES = Object.keys(DEFAULT_QUOTA).sort((a,b)=>a.localeCompare(b,'tr'));
 
 /* Aday verisinin tutulduğu herkese açık Google Sheet (her iki sayfa buradan canlı okur) */
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1gwNC_OWnnIe4iO-XWNh919ivujYzhsJsJfEU8e06k8s/edit";
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1BsbjhWloHdhdYGqFWhuK68rYaiiaOzTevPRw1MTw6fQ/edit";
 function sheetCsvUrl(input){
   input=String(input||'').trim();
   let id=input, gid='0';
