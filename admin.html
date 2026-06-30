@@ -846,7 +846,23 @@ async function pullSheet(url, silent){
 }
 document.getElementById('sheetPull').addEventListener('click',()=>pullSheet(document.getElementById('sheetUrl').value.trim(),false));
 // açılışta otomatik çek (Sheet ana kaynak)
-window.addEventListener('load',()=>{ const u=document.getElementById('sheetUrl').value.trim(); if(u) pullSheet(u,true); });
+// açılışta otomatik: 1) Sheet'i çek  2) yönetici anahtarı kayıtlıysa Supabase'e senkronla
+window.addEventListener('load', async ()=>{
+  const u=document.getElementById('sheetUrl').value.trim();
+  if(u) await pullSheet(u,true);
+  const savedKey=localStorage.getItem('afad_admin_key');
+  const st=document.getElementById('sheetStatus');
+  if(SB && savedKey && STATE.candidates.length){
+    document.getElementById('adminKey').value=savedKey;
+    if(st) st.textContent='Supabase\'e senkronlanıyor…';
+    const a=await doSeedCandidates(true);
+    const b=await doSeedPrefs(true);
+    if(st){
+      if(a!=null && a>=0) st.textContent=`✓ ${STATE.candidates.length} aday Sheet'ten çekildi ve Supabase'e senkronlandı (${new Date().toLocaleTimeString('tr-TR')}).`;
+      else st.textContent=`✓ ${STATE.candidates.length} aday Sheet'ten yüklendi (Supabase senkronu atlandı — anahtar/erişim).`;
+    }
+  }
+});
 
 /* ============ Supabase (admin) ============ */
 let SB=null;
@@ -882,15 +898,18 @@ document.getElementById('sbPull').addEventListener('click',async()=>{
   document.getElementById('loadStatus').textContent=`Supabase'ten ${data.length} aday çekildi.`;
 });
 
-document.getElementById('sbSeed').addEventListener('click',async()=>{
-  if(!SB){alert('Supabase yapılandırılmamış (config.js).');return;}
-  if(!STATE.candidates.length){alert('Önce Excel yükleyin; aday listesi (sıra/ad/soyad/il) buradan Supabase\'e aktarılır.');return;}
-  if(!confirm(`${STATE.candidates.length} aday Supabase'e aktarılacak (mevcut adlar/iller güncellenir, tercihler korunur, eksik kodlar üretilir). Devam?`)) return;
+async function doSeedCandidates(silent){
+  if(!SB){ if(!silent) alert('Supabase yapılandırılmamış (config.js).'); return null; }
+  if(!STATE.candidates.length){ if(!silent) alert('Önce veri yükleyin.'); return null; }
+  if(!silent && !confirm(`${STATE.candidates.length} aday Supabase'e aktarılacak (adlar/iller güncellenir, tercihler korunur). Devam?`)) return null;
   const rows=STATE.candidates.map(c=>({sira:c.sira,ad:c.ad,soyad:c.soyad,il:c.il}));
   const {data,error}=await SB.rpc('admin_seed',{p_key:adminKey(),p_rows:rows});
-  if(error){alert('Hata: '+error.message);return;}
-  alert(`Tamam: ${data} aday Supabase'e yazıldı. Artık adaylar ana sayfadan giriş yapabilir.`);
-});
+  if(error){ if(!silent) alert('Hata: '+error.message); return null; }
+  if(data<0){ if(!silent) alert('Yetkisiz: yönetici anahtarını kontrol edin.'); return -1; }
+  if(!silent) alert(`Tamam: ${data} aday Supabase'e yazıldı.`);
+  return data;
+}
+document.getElementById('sbSeed').addEventListener('click',()=>doSeedCandidates(false));
 
 async function setLock(state){
   if(!SB){alert('Supabase yapılandırılmamış (config.js).');return;}
@@ -900,18 +919,20 @@ async function setLock(state){
   if(data<0){alert('Yetkisiz: yönetici anahtarını kontrol edin.');return;}
   alert((state?'Kilitlendi':'Açıldı')+`: ${data} aday.`);
 }
-document.getElementById('sbSeedPrefs').addEventListener('click',async()=>{
-  if(!SB){alert('Supabase yapılandırılmamış (config.js).');return;}
+async function doSeedPrefs(silent){
+  if(!SB){ if(!silent) alert('Supabase yapılandırılmamış (config.js).'); return null; }
   const rows=STATE.candidates
     .map(c=>({sira:c.sira, prefs:c.prefs.filter(p=>p.valid && isOpenKadro(p.canon)).map(p=>p.canon)}))
     .filter(r=>r.prefs.length);
-  if(!rows.length){alert('Önce Excel/Sheets yükleyin; aktarılacak (açık kadrolu) tercih bulunamadı.');return;}
-  if(!confirm(`${rows.length} adayın mevcut tercihleri Supabase'e yazılacak (adayların formdan girdiği tercihlerin üzerine yazar). Devam?`)) return;
+  if(!rows.length){ if(!silent) alert('Aktarılacak (açık kadrolu) tercih bulunamadı.'); return null; }
+  if(!silent && !confirm(`${rows.length} adayın mevcut tercihleri Supabase'e yazılacak. Devam?`)) return null;
   const {data,error}=await SB.rpc('admin_seed_prefs',{p_key:adminKey(),p_rows:rows});
-  if(error){alert('Hata: '+error.message);return;}
-  if(data<0){alert('Yetkisiz: yönetici anahtarını kontrol edin.');return;}
-  alert(`Tamam: ${data} adayın tercihi yüklendi. Artık harita gerçek durumu gösterir.`);
-});
+  if(error){ if(!silent) alert('Hata: '+error.message); return null; }
+  if(data<0){ if(!silent) alert('Yetkisiz: yönetici anahtarını kontrol edin.'); return -1; }
+  if(!silent) alert(`Tamam: ${data} adayın tercihi yüklendi.`);
+  return data;
+}
+document.getElementById('sbSeedPrefs').addEventListener('click',()=>doSeedPrefs(false));
 document.getElementById('sbLock').addEventListener('click',()=>setLock(true));
 document.getElementById('sbUnlock').addEventListener('click',()=>setLock(false));
 
