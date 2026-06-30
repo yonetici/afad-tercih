@@ -75,6 +75,7 @@
 
     <!-- Tercih ekranı -->
     <div id="prefCard" class="card hidden">
+      <div id="meInfo" style="font-size:15px;font-weight:600;margin-bottom:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:9px"></div>
       <div id="dropNotice"></div>
       <div class="msg info proj" id="proj"></div>
 
@@ -159,6 +160,7 @@ document.getElementById('loadBtn').addEventListener('click',()=>{
   if(!cand){im.innerHTML='<div class="msg bad">Bu sıra numarası listede bulunamadı.</div>';return;}
   if(normKey(cand.il)!==normKey(il)){im.innerHTML=`<div class="msg bad">Sıra no ile il eşleşmiyor. (#${sira} kaydı farklı bir ile ait.)</div>`;return;}
   me={sira, il:cand.il, ad:cand.ad, soyad:cand.soyad};
+  document.getElementById('meInfo').innerHTML=`👤 <b>#${me.sira} — ${((me.ad||'')+' '+(me.soyad||'')).trim()||'(isim girilmemiş)'}</b> · Mevcut il: ${me.il||'-'}`;
   // liyakat-duyarlı kalan kadro (üst sıradakilerin Sheet'teki tercihlerine göre)
   rem=simulateRemaining(CANDS, sira);
   im.innerHTML='';
