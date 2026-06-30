@@ -79,7 +79,7 @@
 <body>
 <header>
   <h1>AFAD Şube Müdürü — Tercih & Yerleştirme Sistemi</h1>
-  <p>Görevde Yükselme / Ünvan Değişikliği · liyakat sırasına göre otomatik yerleştirme ve çakışma analizi</p>
+  <p>Görevde Yükselme / Ünvan Değişikliği · sıra numarasına göre otomatik yerleştirme ve çakışma analizi</p>
 </header>
 
 <div class="wrap">
@@ -97,8 +97,8 @@
     <div class="card">
       <div class="note">
         Excel dosyanızı (<b>AFAD ŞUBE MÜDÜRÜ.xlsx</b> formatında) yükleyin. Beklenen kolonlar:
-        <b>sıra no (f)</b>, <b>İL</b> (mevcut görev yeri), <b>Ad</b>, <b>Soyad</b>, ardından <b>1. TERCİH, 2. TERCİH …</b> (15'e kadar).
-        Bir hücrede <code>/</code> ile ayrılmış çoklu il yazılmışsa otomatik ayrıştırılır. Sıralama (liyakat) <b>f</b> kolonundaki numaraya göredir: küçük no = yüksek öncelik.
+        <b>sıra no</b> (ilk kolon), <b>İL</b> (mevcut görev yeri), <b>Ad</b>, <b>Soyad</b>, ardından <b>1. TERCİH, 2. TERCİH …</b> (15'e kadar).
+        Bir hücrede <code>/</code> ile ayrılmış çoklu il yazılmışsa otomatik ayrıştırılır. Sıralama, <b>sıra no</b> numarasına göredir: küçük no = yüksek öncelik.
       </div>
       <div class="flex">
         <label class="filelabel">📂 Excel Seç (.xlsx)
@@ -242,7 +242,7 @@
   <div class="view" id="v-conflict">
     <div class="card">
       <div class="toolbar"><b>⚔️ Çakışma Analizi</b><button class="btn sm right" id="pdfConflictBtn">📄 PDF</button></div>
-      <div class="note">Aşağıda <b>1. tercih talebi kadrodan fazla olan</b> iller listelenir. Her il için adaylar liyakat sırasına göre dizilir; kadroyu kapanlar <span class="pill ok">yerleşti</span>, kapamayanların <b>alternatif tercihlerine göre nereye düştüğü</b> gösterilir.</div>
+      <div class="note">Aşağıda <b>1. tercih talebi kadrodan fazla olan</b> iller listelenir. Her il için adaylar sıra numarasına göre dizilir; kadroyu kapanlar <span class="pill ok">yerleşti</span>, kapamayanların <b>alternatif tercihlerine göre nereye düştüğü</b> gösterilir.</div>
       <div id="conflictList"></div>
     </div>
   </div>
@@ -292,7 +292,7 @@ function parseWorkbook(wb){
 }
 
 /* ============ YERLEŞTİRME ALGORİTMASI ============
-   Liyakat sırasına göre (sira artan) serial dictatorship:
+   Sıra numarasına göre (sira artan) serial dictatorship:
    her aday, kadrosu boş olan en yüksek sıradaki geçerli tercihine yerleşir. */
 function runPlacement(){
   const remaining = {};
@@ -577,7 +577,7 @@ function renderConflict(){
   const placedMap=new Map(STATE.result.placements.map(p=>[p.cand,p]));
   el.innerHTML = provs.map(prov=>{
     const q=Number(STATE.quota[prov])||0;
-    // bu ili 1. tercih yapan adaylar, liyakat sırasına göre
+    // bu ili 1. tercih yapan adaylar, sıra numarasına göre
     const seekers=STATE.candidates
       .filter(c=>c.prefs[0] && c.prefs[0].valid && c.prefs[0].canon===prov)
       .sort((a,b)=>a.sira-b.sira);
@@ -603,7 +603,7 @@ function renderConflict(){
     return `<details open>
       <summary>${prov} — kadro <b>${q}</b>, talep <b style="color:#fca5a5">${seekers.length}</b> (${seekers.length-q} fazla)</summary>
       <div class="tablewrap" style="max-height:none;margin-top:10px">
-      <table><thead><tr><th>#</th><th>Liyakat No</th><th>Aday</th><th>Sonuç</th><th>Tercihleri</th></tr></thead>
+      <table><thead><tr><th>#</th><th>Sıra No</th><th>Aday</th><th>Sonuç</th><th>Tercihleri</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     </details>`;
   }).join('');
@@ -680,7 +680,7 @@ function printReport(title, subtitle, bodyHtml, landscape){
   <h1>${title}</h1>
   <div class="sub">Görevde Yükselme / Ünvan Değişikliği · ${now}${subtitle?' · '+subtitle:''}</div>
   ${bodyHtml}
-  <div class="foot">Liyakat sırasına (sıra no) göre otomatik yerleştirme. Bu çıktı bilgilendirme amaçlıdır.</div>
+  <div class="foot">Sıra numarasına göre otomatik yerleştirme. Bu çıktı bilgilendirme amaçlıdır.</div>
   <p class="noprint"><button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer">Yazdır / PDF Kaydet</button></p>
   </body></html>`;
   const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.focus();
@@ -744,7 +744,7 @@ document.getElementById('pdfConflictBtn').addEventListener('click',()=>{
       return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${c.sira}</td><td>${((c.ad||'')+' '+(c.soyad||'')).trim()||'-'}</td><td>${dest}</td><td class="t">${trcs}</td></tr>`;
     }).join('');
     return `<h2>${prov} — kadro ${q}, talep <span class="bad">${seekers.length}</span> (${seekers.length-q} fazla)</h2>
-      <table><thead><tr><th style="width:34px">#</th><th style="width:70px">Liyakat No</th><th>Aday</th><th style="width:200px">Sonuç</th><th>Tercihleri</th></tr></thead>
+      <table><thead><tr><th style="width:34px">#</th><th style="width:70px">Sıra No</th><th>Aday</th><th style="width:200px">Sonuç</th><th>Tercihleri</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }).join('');
   printReport('AFAD Şube Müdürü — Çakışma Analizi', `${provs.length} ilde kontenjan aşımı`, body, false);

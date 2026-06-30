@@ -6,7 +6,7 @@
 
 -- 1) TABLOLAR -------------------------------------------------
 create table if not exists candidates (
-  sira    int primary key,          -- liyakat / başarı sırası (küçük = yüksek öncelik)
+  sira    int primary key,          -- sıra no / başarı sırası (küçük = yüksek öncelik)
   ad      text,
   soyad   text,
   il      text,                      -- mevcut görev yeri
@@ -91,7 +91,7 @@ begin
   return 'OK';
 end; $$;
 
--- LİYAKAT-DUYARLI UYGUNLUK: p_sira'dan YÜKSEK sıradaki (sira<p_sira) adaylar
+-- SIRA NO DUYARLI UYGUNLUK: p_sira'dan YÜKSEK sıradaki (sira<p_sira) adaylar
 -- tercihleriyle yerleştirildikten sonra her ilde KALAN kadro. 0 olanlar adaya kapalıdır.
 create or replace function available_quota(p_sira int)
 returns table(il text, kalan int)

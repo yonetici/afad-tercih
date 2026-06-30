@@ -54,7 +54,7 @@
 <body>
 <header>
   <h1>AFAD Şube Müdürü — Tercih Simülasyonu</h1>
-  <p>Görevde Yükselme / Ünvan Değişikliği · liyakat sıranıza göre nereye yerleşeceğinizi deneyin (kayıt yapılmaz)</p>
+  <p>Görevde Yükselme / Ünvan Değişikliği · sıra numaranıza göre nereye yerleşeceğinizi deneyin (kayıt yapılmaz)</p>
 </header>
 <div class="wrap">
   <div id="cfgWarn" class="card hidden"><div class="msg bad">⚠ Aday verisi yüklenemedi (Google Sheets bağlantısı bulunamadı/erişilemedi). Lütfen yetkiliye bildirin.</div></div>
@@ -161,7 +161,7 @@ document.getElementById('loadBtn').addEventListener('click',()=>{
   if(normKey(cand.il)!==normKey(il)){im.innerHTML=`<div class="msg bad">Sıra no ile il eşleşmiyor. (#${sira} kaydı farklı bir ile ait.)</div>`;return;}
   me={sira, il:cand.il, ad:cand.ad, soyad:cand.soyad};
   document.getElementById('meInfo').innerHTML=`👤 <b>#${me.sira} — ${((me.ad||'')+' '+(me.soyad||'')).trim()||'(isim girilmemiş)'}</b> · Mevcut il: ${me.il||'-'}`;
-  // liyakat-duyarlı kalan kadro (üst sıradakilerin Sheet'teki tercihlerine göre)
+  // sıra numarasına göre kalan kadro (üst sıradakilerin Sheet'teki tercihlerine göre)
   rem=simulateRemaining(CANDS, sira);
   im.innerHTML='';
   // adayın Sheet'teki mevcut tercihleri başlangıç noktası (açık & hâlâ uygun olanlar)
@@ -293,7 +293,7 @@ document.getElementById('printBtn').addEventListener('click',()=>{
     <table><thead><tr><th style="width:60px;text-align:center">Sıra</th><th>Tercih Edilen İl</th><th style="width:70px;text-align:center">Kadro</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p class="proj">${proj?`Mevcut duruma göre tahmini yerleşme: <b>${proj}</b> (${chosen.indexOf(proj)+1}. tercih).`:'Mevcut seçimlerle yerleşme görünmüyor.'}</p>
-    <div class="foot">Bu belge bilgilendirme amaçlıdır; nihai yerleştirme liyakat sırası ve tüm adayların tercihleri işlendikten sonra kesinleşir.</div>
+    <div class="foot">Bu belge bilgilendirme amaçlıdır; nihai yerleştirme sıra numarası ve tüm adayların tercihleri işlendikten sonra kesinleşir.</div>
     <p class="noprint"><button onclick="window.print()" style="padding:10px 16px;font-size:14px;cursor:pointer">Yazdır / PDF Kaydet</button></p>
     </body></html>`;
   const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.focus();

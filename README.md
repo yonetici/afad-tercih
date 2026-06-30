@@ -1,7 +1,7 @@
 # AFAD Şube Müdürü — Tercih & Yerleştirme Sistemi
 
 Görevde yükselme / ünvan değişikliği sınavı sonrası, adayların il tercihlerine göre
-**liyakat sırasına dayalı otomatik yerleştirme** ve **çakışma analizi** yapan statik web uygulaması.
+**sıra numarasına dayalı otomatik yerleştirme** ve **çakışma analizi** yapan statik web uygulaması.
 
 Sunucu gerektirmez. GitHub Pages / Netlify / Cloudflare Pages gibi statik bir yere yüklenir.
 Adayların kendi tercihlerini girmesi için (isteğe bağlı) ücretsiz **Supabase** bulut veritabanı kullanılır
@@ -24,7 +24,7 @@ Adayların kendi tercihlerini girmesi için (isteğe bağlı) ücretsiz **Supaba
 - Aday **sıra no + İL (mevcut görev yeri)** ile giriş yapar → **Türkiye haritası ve tablo** açılır.
   Haritada her açık il **adıyla** etiketlidir; üzerine gelince kadro/kalan/durum gösterilir.
 - Kayıttan sonra **🖨️ Özet / PDF** ile kişisel tercih dökümü alınabilir.
-- **Liyakat-duyarlı uygunluk:** kendisinden **üst sıradaki** adayların doldurduğu kadrolar
+- **Sıra numarasına göre uygunluk:** kendisinden **üst sıradaki** adayların doldurduğu kadrolar
   haritada **kırmızı / "dolu"** olur ve **seçilemez**. Boş olanlar yeşil, kendi seçimi mavi.
 - Haritadan il tıklayarak ya da tablodan "ekle" ile **en fazla `MAX_PREFS` (vars. 4)** tercih sıralar.
 - Üstte **tahmini yerleşeceği il** canlı gösterilir (üst sıra adaylara göre).
@@ -71,15 +71,15 @@ Beklenen kolonlar (her iki yolda da):
   il bazında yerleşim tablosu; **🔄 Supabase'ten Yenile** ve **oto-yenile (15sn)** ile canlı izleme.
 - **🏛️ Kadrolar** — düzenlenebilir kadro tablosu (EK-1 PDF: 63 il, **toplam 109**), talep vs kadro.
 - **✅ Yerleştirme** — kim nereye / kaçıncı tercihiyle; açıkta kalanlar; Excel'e aktarma.
-- **⚔️ Çakışmalar** — bir ili kadrodan fazla seçenleri liyakat sırasıyla dizer; kazananları ve
+- **⚔️ Çakışmalar** — bir ili kadrodan fazla seçenleri sıra numarasıyla dizer; kazananları ve
   kaybedenlerin **alternatif tercihine göre nereye düştüğünü** gösterir.
 - **⚠️ Uyarılar** — tercih girmemiş/eksik girenler, tanınmayan il, açıkta kalanlar.
 
 ## Yerleştirme algoritması
 
-Liyakat sırasına göre (`f` / sıra no — küçük numara = yüksek öncelik) **serial dictatorship**:
+Sıra numarasına göre (sıra no — küçük numara = yüksek öncelik) **serial dictatorship**:
 
-> Adaylar liyakat sırasıyla tek tek işlenir. Her aday, henüz kadrosu dolmamış **en yüksek
+> Adaylar sıra numarasıyla tek tek işlenir. Her aday, henüz kadrosu dolmamış **en yüksek
 > sıradaki tercihine** yerleştirilir. Hiçbir tercihinde boş kadro yoksa açıkta kalır.
 
 Deterministik, itiraz edilemez; "herkes mümkün olduğunca üst tercihine" sonucunu verir.

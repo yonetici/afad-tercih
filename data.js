@@ -77,7 +77,7 @@ function parseCandidateRows(rows){
   return cands;
 }
 
-/* Liyakat-duyarlı kalan kadro: sira < beforeSira olan adaylar yerleştirildikten sonra il başına kalan */
+/* Kalan kadro (sıra numarasına göre): sira < beforeSira olan adaylar yerleştirildikten sonra il başına kalan */
 function simulateRemaining(candidates, beforeSira){
   const rem={}; for(const [p,n] of Object.entries(DEFAULT_QUOTA)) rem[p]=n;
   candidates.filter(c=>c.sira<beforeSira).sort((a,b)=>a.sira-b.sira).forEach(c=>{
