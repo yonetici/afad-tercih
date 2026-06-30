@@ -151,7 +151,8 @@
       <div class="stats" id="dashStats"></div>
     </div>
     <div class="card">
-      <div class="toolbar"><b>📈 Süreç Özeti & Riskler</b></div>
+      <div class="toolbar"><b>📈 Süreç Özeti & Riskler</b>
+        <button class="btn sm right" id="pdfDashBtn">📄 PDF</button></div>
       <div id="dashNarrative" class="note" style="margin:0 0 14px"></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
         <div><div class="anahead" style="color:#86efac">🟢 Boş / rahat iller</div><div id="anaEmpty" class="analist"></div></div>
@@ -240,6 +241,7 @@
   <!-- CONFLICT -->
   <div class="view" id="v-conflict">
     <div class="card">
+      <div class="toolbar"><b>⚔️ Çakışma Analizi</b><button class="btn sm right" id="pdfConflictBtn">📄 PDF</button></div>
       <div class="note">Aşağıda <b>1. tercih talebi kadrodan fazla olan</b> iller listelenir. Her il için adaylar liyakat sırasına göre dizilir; kadroyu kapanlar <span class="pill ok">yerleşti</span>, kapamayanların <b>alternatif tercihlerine göre nereye düştüğü</b> gösterilir.</div>
       <div id="conflictList"></div>
     </div>
@@ -652,7 +654,39 @@ document.getElementById('exportResultBtn').addEventListener('click',()=>{
   XLSX.writeFile(wb,'yerlestirme_sonuclari.xlsx');
 });
 
-/* ---- Yerleştirme PDF (yazdırılabilir, stilli) ---- */
+/* ---- Ortak PDF (yazdırılabilir, stilli) ---- */
+function printReport(title, subtitle, bodyHtml, landscape){
+  const now=new Date().toLocaleString('tr-TR');
+  const size = landscape===false ? 'A4' : 'A4 landscape';
+  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${title}</title>
+  <style>
+    @page{size:${size};margin:14mm}
+    *{font-family:Arial,Helvetica,sans-serif}
+    body{color:#111;margin:0}
+    h1{font-size:18px;margin:0 0 2px} h2{font-size:14px;margin:16px 0 6px;color:#0c4a6e}
+    .sub{color:#555;font-size:12px;margin-bottom:12px}
+    .stats{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 12px;font-size:13px}
+    .stats b{font-size:16px;display:block} .stats .box{border:1px solid #ddd;border-radius:8px;padding:8px 14px;min-width:90px}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}
+    th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
+    th{background:#0c4a6e;color:#fff;text-align:left;font-size:11px;text-transform:uppercase}
+    td.t{color:#444;font-size:11px}
+    tr:nth-child(even) td{background:rgba(0,0,0,.02)}
+    .ok{color:#0a7a2f;font-weight:bold} .bad{color:#c0392b;font-weight:bold} .warn{color:#b9770e;font-weight:bold}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+    .foot{margin-top:14px;font-size:11px;color:#666}
+    @media print{.noprint{display:none}}
+  </style></head><body>
+  <h1>${title}</h1>
+  <div class="sub">Görevde Yükselme / Ünvan Değişikliği · ${now}${subtitle?' · '+subtitle:''}</div>
+  ${bodyHtml}
+  <div class="foot">Liyakat sırasına (sıra no) göre otomatik yerleştirme. Bu çıktı bilgilendirme amaçlıdır.</div>
+  <p class="noprint"><button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer">Yazdır / PDF Kaydet</button></p>
+  </body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.focus();
+}
+
+/* ---- Yerleştirme PDF ---- */
 document.getElementById('pdfResultBtn').addEventListener('click',()=>{
   if(!STATE.result){alert('Önce veri yükleyin.');return;}
   const ps=STATE.result.placements;
@@ -668,55 +702,83 @@ document.getElementById('pdfResultBtn').addEventListener('click',()=>{
     if(resFilter==='notp1') return p.placedProvince && p.prefRank!==1;
     return true;
   }).sort((a,b)=>a.cand.sira-b.cand.sira);
-
   const n=ps.length, placed=ps.filter(p=>p.placedProvince).length, p1=ps.filter(p=>p.prefRank===1).length;
   const memnun = placed?Math.round(p1/placed*100):0;
-  const now=new Date().toLocaleString('tr-TR');
   const rows=list.map(p=>{
     const c=p.cand;
-    const yer = p.placedProvince
-      ? `<b style="color:#0a7a2f">${p.placedProvince}</b>`
-      : `<b style="color:#c0392b">AÇIKTA</b>`;
+    const yer = p.placedProvince?`<span class="ok">${p.placedProvince}</span>`:`<span class="bad">AÇIKTA</span>`;
     const rank = p.placedProvince ? `${p.prefRank}.` : '—';
     const trcs = c.prefs.map((x,i)=>`${i+1}.${x.canon||x.raw}`).join(', ');
     const rowbg = p.placedProvince ? (p.prefRank===1?'background:#eafaf0':'') : 'background:#fdecea';
     return `<tr style="${rowbg}"><td style="text-align:center">${c.sira}</td><td>${((c.ad||'')+' '+(c.soyad||'')).trim()||'-'}</td>
       <td>${c.il||'-'}</td><td>${yer}</td><td style="text-align:center">${rank}</td><td class="t">${trcs||'—'}</td></tr>`;
   }).join('');
+  const body=`<div class="stats">
+      <div class="box"><b>${n}</b>Toplam Aday</div>
+      <div class="box"><b class="ok">${placed}</b>Yerleşen</div>
+      <div class="box"><b class="bad">${n-placed}</b>Açıkta</div>
+      <div class="box"><b>${p1}</b>1. Tercih</div>
+      <div class="box"><b>${memnun}%</b>1. Tercih Oranı</div></div>
+    <table><thead><tr><th style="width:42px;text-align:center">Sıra</th><th>Ad Soyad</th><th style="width:90px">Mevcut İl</th>
+      <th style="width:110px">Yerleştiği İl</th><th style="width:60px;text-align:center">Tercih</th><th>Tüm Tercihleri</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#888">Kayıt yok</td></tr>'}</tbody></table>`;
+  printReport('AFAD Şube Müdürü — Yerleştirme Sonuçları', `Filtre: <b>${filterLabel}</b>${term?` · Arama: "${term}"`:''} · ${list.length} kayıt`, body, true);
+});
 
-  const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>Yerleştirme Sonuçları</title>
-  <style>
-    @page{size:A4 landscape;margin:14mm}
-    *{font-family:Arial,Helvetica,sans-serif}
-    body{color:#111;margin:0}
-    h1{font-size:18px;margin:0 0 2px} .sub{color:#555;font-size:12px;margin-bottom:12px}
-    .stats{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
-    .stats b{font-size:16px;display:block}
-    .stats .box{border:1px solid #ddd;border-radius:8px;padding:8px 14px;min-width:90px}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
-    th{background:#0c4a6e;color:#fff;text-align:left;font-size:11px;text-transform:uppercase}
-    td.t{color:#444;font-size:11px}
-    tr:nth-child(even) td{background:rgba(0,0,0,.02)}
-    .foot{margin-top:14px;font-size:11px;color:#666}
-    @media print{.noprint{display:none}}
-  </style></head><body>
-  <h1>AFAD Şube Müdürü — Yerleştirme Sonuçları</h1>
-  <div class="sub">Görevde Yükselme / Ünvan Değişikliği · ${now} · Filtre: <b>${filterLabel}</b>${term?` · Arama: "${term}"`:''} · Liste: ${list.length} kayıt</div>
-  <div class="stats">
-    <div class="box"><b>${n}</b>Toplam Aday</div>
-    <div class="box"><b style="color:#0a7a2f">${placed}</b>Yerleşen</div>
-    <div class="box"><b style="color:#c0392b">${n-placed}</b>Açıkta</div>
-    <div class="box"><b>${p1}</b>1. Tercih</div>
-    <div class="box"><b>${memnun}%</b>1. Tercih Oranı</div>
-  </div>
-  <table><thead><tr><th style="width:42px;text-align:center">Sıra</th><th>Ad Soyad</th><th style="width:90px">Mevcut İl</th>
-    <th style="width:110px">Yerleştiği İl</th><th style="width:60px;text-align:center">Tercih</th><th>Tüm Tercihleri</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#888">Kayıt yok</td></tr>'}</tbody></table>
-  <div class="foot">Liyakat sırasına (sıra no) göre otomatik yerleştirme. Bu çıktı bilgilendirme amaçlıdır.</div>
-  <p class="noprint"><button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer">Yazdır / PDF Kaydet</button></p>
-  </body></html>`;
-  const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.focus();
+/* ---- Çakışma PDF ---- */
+document.getElementById('pdfConflictBtn').addEventListener('click',()=>{
+  if(!STATE.result){alert('Önce veri yükleyin.');return;}
+  const provs=conflictProvinces();
+  const placedMap=new Map(STATE.result.placements.map(p=>[p.cand,p]));
+  let body;
+  if(!provs.length){ body='<p>🎉 1. tercih bazında kontenjan aşımı (çakışma) yok.</p>'; }
+  else body=provs.map(prov=>{
+    const q=Number(STATE.quota[prov])||0;
+    const seekers=STATE.candidates.filter(c=>c.prefs[0] && c.prefs[0].valid && c.prefs[0].canon===prov).sort((a,b)=>a.sira-b.sira);
+    const rows=seekers.map((c,i)=>{
+      const pl=placedMap.get(c);
+      const dest = pl.placedProvince===prov ? `<span class="ok">${prov}'e yerleşti</span>`
+        : pl.placedProvince ? `<span class="warn">${pl.placedProvince} (${pl.prefRank}. tercih)</span>`
+        : `<span class="bad">AÇIKTA KALDI</span>`;
+      const trcs=c.prefs.map((x,j)=>`${j+1}.${x.canon||x.raw}`).join(', ');
+      return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${c.sira}</td><td>${((c.ad||'')+' '+(c.soyad||'')).trim()||'-'}</td><td>${dest}</td><td class="t">${trcs}</td></tr>`;
+    }).join('');
+    return `<h2>${prov} — kadro ${q}, talep <span class="bad">${seekers.length}</span> (${seekers.length-q} fazla)</h2>
+      <table><thead><tr><th style="width:34px">#</th><th style="width:70px">Liyakat No</th><th>Aday</th><th style="width:200px">Sonuç</th><th>Tercihleri</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }).join('');
+  printReport('AFAD Şube Müdürü — Çakışma Analizi', `${provs.length} ilde kontenjan aşımı`, body, false);
+});
+
+/* ---- Dashboard / Risk PDF ---- */
+document.getElementById('pdfDashBtn').addEventListener('click',()=>{
+  if(!STATE.result){alert('Önce veri yükleyin.');return;}
+  const placedMap=placedByProvince(); const {first}=demandMaps();
+  const provs=Object.keys(STATE.quota);
+  const n=STATE.candidates.length, placed=STATE.result.placements.filter(p=>p.placedProvince).length;
+  const empty=provs.map(p=>({p,free:(Number(STATE.quota[p])||0)-(placedMap[p]||[]).length})).filter(x=>x.free>0).sort((a,b)=>b.free-a.free);
+  const emptyTotal=empty.reduce((s,x)=>s+x.free,0);
+  const comp=provs.map(p=>({p,d:first[p]||0,q:Number(STATE.quota[p])||0})).filter(x=>x.d>x.q).sort((a,b)=>(b.d-b.q)-(a.d-a.q));
+  const risk=(STATE.result.unplaced||[]).map(c=>{
+    let reason='tüm tercihleri doldu';
+    if(c.prefs.length===0) reason='tercih girmemiş';
+    else if(!c.prefs.some(p=>p.valid && isOpenKadro(p.canon))) reason='geçersiz/kadrosuz tercih';
+    return {c,reason};
+  }).sort((a,b)=>a.c.sira-b.c.sira);
+  const t=(head,rows)=>`<table><thead><tr>${head}</tr></thead><tbody>${rows||'<tr><td colspan="3" style="color:#888">—</td></tr>'}</tbody></table>`;
+  const body=`<div class="stats">
+      <div class="box"><b>${n}</b>Toplam Aday</div>
+      <div class="box"><b class="ok">${placed}</b>Yerleşen</div>
+      <div class="box"><b class="bad">${n-placed}</b>Açıkta</div>
+      <div class="box"><b class="bad">${comp.length}</b>Çakışan İl</div>
+      <div class="box"><b class="ok">${emptyTotal}</b>Boş Kadro (${empty.length} il)</div></div>
+    <div class="grid3">
+      <div><h2 style="color:#0a7a2f">🟢 Boş / rahat iller</h2>${t('<th>İl</th><th style="text-align:right">Boş</th>',empty.map(x=>`<tr><td>${x.p}</td><td style="text-align:right" class="ok">${x.free}</td></tr>`).join(''))}</div>
+      <div><h2 style="color:#c0392b">🔴 En çok rekabet</h2>${t('<th>İl</th><th style="text-align:right">Talep/Kadro</th>',comp.map(x=>`<tr><td>${x.p}</td><td style="text-align:right" class="bad">${x.d}/${x.q}</td></tr>`).join(''))}</div>
+      <div><h2 style="color:#b9770e">⚠️ Açıkta kalma riski</h2>${t('<th>Aday</th><th>Sebep</th>',risk.map(x=>`<tr><td>#${x.c.sira} ${((x.c.ad||'')+' '+(x.c.soyad||'')).trim()||'(isim yok)'}</td><td class="warn">${x.reason}</td></tr>`).join(''))}</div>
+    </div>`;
+  printReport('AFAD Şube Müdürü — Süreç Özeti & Riskler',
+    `${placed}/${n} yerleşti · ${comp.length} çakışma · ${empty.length} ilde ${emptyTotal} boş kadro`, body, false);
 });
 document.getElementById('exportQuotaBtn').addEventListener('click',()=>{
   const data=Object.entries(STATE.quota).sort((a,b)=>a[0].localeCompare(b[0],'tr')).map(([il,k])=>({'İl':il,'Kadro':k}));
